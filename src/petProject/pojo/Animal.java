@@ -20,6 +20,10 @@ public class Animal {
 	private Attribute attributes;
 	private Environment environment;
 	private String publishedAt;
+	private String dateAccessed;
+	private Integer daysToAdopt; 
+	private String statusChangedAt;
+
 
 	/**
 	 * @return the id
@@ -201,6 +205,48 @@ public class Animal {
 	 */
 	public void setPublishedAt(String publishedAt) {
 		this.publishedAt = publishedAt;
+	}
+
+	/**
+	 * @return the dateAccessed
+	 */
+	public String getDateAccessed() {
+		return dateAccessed;
+	}
+
+	/**
+	 * @param dateAccessed the dateAccessed to set
+	 */
+	public void setDateAccessed(String dateAccessed) {
+		this.dateAccessed = dateAccessed;
+	}
+
+	/**
+	 * @return the daysToAdopt
+	 */
+	public Integer getDaysToAdopt() {
+		return daysToAdopt;
+	}
+
+	/**
+	 * @param daysToAdopt the daysToAdopt to set
+	 */
+	public void setDaysToAdopt(Integer daysToAdopt) {
+		this.daysToAdopt = daysToAdopt;
+	}
+
+	/**
+	 * @return the statusChangedAt
+	 */
+	public String getStatusChangedAt() {
+		return statusChangedAt;
+	}
+
+	/**
+	 * @param statusChangedAt the statusChangedAt to set
+	 */
+	public void setStatusChangedAt(String statusChangedAt) {
+		this.statusChangedAt = statusChangedAt;
 	}
 
 	@Override

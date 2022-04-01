@@ -1,5 +1,6 @@
 package petProject;
 
+import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
@@ -31,11 +32,11 @@ public class LimitedFileWriter implements AutoCloseable {
 		String nameOfOutputFile = outputFilePrefix + formatted + ".txt";
 		closePrinterAndFile();
 		try {
-			this.fileWriter = new FileWriter(nameOfOutputFile);
+			this.fileWriter = new FileWriter(new File("json",nameOfOutputFile));
 			this.printWriter = new PrintWriter(fileWriter);
 			currentFileCount++;
 		} catch (IOException e) {
-			
+          e.printStackTrace();			
 		}
 
 	}

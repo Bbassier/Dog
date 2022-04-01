@@ -1,9 +1,9 @@
 package petProject.hadoop;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.StringTokenizer;
+import java.time.Duration;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -15,43 +15,34 @@ import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+
+import petProject.pojo.Animal;
+
 public class HadoopRunner {
 
   public static class AnimalMapper
        extends Mapper<LongWritable, Text, Text, Text>{
 
-		private Text keyId = new Text();
-		private Text valueInt = new Text();
+		
 
 		@Override
 		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
-			StringTokenizer itr = new StringTokenizer(value.toString());
-			Map<String, String> keyValueMap = new HashMap<String, String>();
-			while (itr.hasMoreTokens()) {
-				String text = itr.nextToken();
-				String[] textValues = text.split(",");
-				for (String txt : textValues) {
-					String[] keyValue = txt.split("=");
-					if (keyValue.length == 2) {
-						keyValueMap.put(keyValue[0], keyValue[1]);
-					}
-					
+    		String animalString = new String (value.copyBytes());
+    		ObjectMapper mapper = new ObjectMapper();
+			if (animalString != null && !animalString.isEmpty()) {
+				try {
+					Animal animal = mapper.readValue(animalString, Animal.class);
+					Text keyId = new Text();
+					Text valueInt = new Text();
+					keyId.set(animal.getId().toString());
+					valueInt.set(animalString);
+	        		context.write(keyId, valueInt);
 				}
-				String idAsString = keyValueMap.get("id");
-				if(idAsString!=null && !idAsString.isEmpty()) {
-					keyId.set(idAsString);
-				}
-				else {
-					keyId.set("-1");
-				}
-				String date = keyValueMap.get("Date");
-				if(date!=null && !date.isEmpty()) {
-					valueInt.set(date);
-				}
-				else {
-					valueInt.set("-1");
-				}
-				context.write(keyId, valueInt);
+				catch (Exception e) {
+					e.printStackTrace();
+				} 
+				
 			}
 		}
   }
@@ -64,41 +55,42 @@ public class HadoopRunner {
 		@Override
 		public void reduce(Text key, Iterable<Text> values, Context context)
 				throws IOException, InterruptedException {
-			boolean wasThereOn12 = false;
-			boolean wasThereOn13 = false;
-			boolean wasThereOn14 = false;
-			String adoptedOrNot;
+			ObjectMapper mapper = new ObjectMapper();
+			Integer lastDayIn = null;
+			LocalDate firstDayInDate;
+			LocalDate lastDayInDate;
+			Animal animal = null; 
+			DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MMddyyyy");
+			DateTimeFormatter formatter2 = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss'+'SSSS");
 			for (Text val : values) {
-				int intOfVal = Integer.parseInt(val.toString());
-				if(intOfVal == 314) {
-					wasThereOn14 = true;
+				animal = mapper.readValue(val.toString(), Animal.class);
+				Integer dateAccessed = Integer.parseInt(animal.getDateAccessed());
+				if(lastDayIn == null) {
+					lastDayIn = dateAccessed;
 				}
-				if(intOfVal == 313) {
-					wasThereOn13 = true;
-				}
-				if(intOfVal == 312) {
-					wasThereOn12 = true;
-				}
-			}
-			if((wasThereOn12 || wasThereOn13) && !wasThereOn14) {
-				adoptedOrNot = " Adopted on : ";
-				if(wasThereOn13) {
-					adoptedOrNot = adoptedOrNot+"03 13";
-				}
-				else {
-					adoptedOrNot = adoptedOrNot+"03 12";
+
+				if(lastDayIn < dateAccessed) {
+					lastDayIn = dateAccessed; 
 				}
 			}
-			else {
-				adoptedOrNot = " Not Adopted";
+			if(animal !=null && lastDayIn < 316) { 
+				lastDayInDate = LocalDate.parse("0"+lastDayIn.toString()+"2022",formatter);
+				firstDayInDate = LocalDate.parse(animal.getStatusChangedAt(),formatter2);
+				Duration duration = Duration.between(firstDayInDate.atStartOfDay(),lastDayInDate.atStartOfDay());
+				animal.setDaysToAdopt((int) duration.toDays());
+				
 			}
-			result.set(adoptedOrNot);
-			context.write(key, result);
+			if(animal !=null && animal.getDaysToAdopt() != null) {
+        		String jsonInString = mapper.writeValueAsString(animal);
+				result.set(jsonInString);
+				context.write(key, result);
+			}
 		}
   }
 
   public static void main(String[] args) throws Exception {
     Configuration conf = new Configuration();
+    conf.setInt("mapreduce.task.io.sort.mb", 2000);
     Job job = Job.getInstance(conf, "Animal Adoptaion Day");
 	FileInputFormat.addInputPath(job, new Path("input"));
 	FileOutputFormat.setOutputPath(job, new Path("output"));

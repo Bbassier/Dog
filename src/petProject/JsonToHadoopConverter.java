@@ -16,7 +16,7 @@ public class JsonToHadoopConverter {
 	public void convert() {
 		System.out.println("Converting Json To Output");
 		ObjectMapper mapper = new ObjectMapper();
-		try (LimitedFileWriter outFile = new LimitedFileWriter("output", 3, 1000)){
+		try (LimitedFileWriter outFile = new LimitedFileWriter("output", 3, 10000000)){
 			List<FileWithDate> jsonFiles = getJsonFiles();
 			for (FileWithDate json : jsonFiles) {
 				// Convert JSON file to Java objects using Jackson Mapper
@@ -24,7 +24,9 @@ public class JsonToHadoopConverter {
 				for (Animal animal : animalCollection.getAnimals()) {
 					// Print indivial animal on single line in output file.
 					if(animal.getSpecies().equalsIgnoreCase("Dog")) {
-						outFile.writeLine(animal.toString() + ",Date=" + json.getDate());
+						animal.setDateAccessed(json.getDate());
+						String jsonInString = mapper.writeValueAsString(animal);
+						outFile.writeLine(jsonInString);
 
 					}
 				}
