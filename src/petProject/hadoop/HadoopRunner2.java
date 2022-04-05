@@ -7,6 +7,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
@@ -17,29 +18,36 @@ import org.apache.hadoop.mapreduce.Mapper;
 import org.apache.hadoop.mapreduce.Reducer;
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.log4j.Logger;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import petProject.DecisionNode;
+import petProject.LeafNode;
+import petProject.UtilFunctions;
 import petProject.pojo.Animal;
+import petProject.pojo.FeatureOption;
+import petProject.pojo.FeatureOutput;
 
 public class HadoopRunner2 {
-
+	
+  static Logger logger = Logger.getLogger(HadoopRunner2.class.getName());
+  
   public static class AttributeMapper
        extends Mapper<LongWritable, Text, Text, Text>{
-
-		
 
 		@Override
 		public void map(LongWritable key, Text value, Context context) throws IOException, InterruptedException {
 			Text keyId = new Text();
 			Text valueInt = new Text();
-    		String wholeString = new String (value.copyBytes());
-    		String[] stringArray = new String[2];
-    		stringArray = wholeString.split("\\t");
+    		
     		String animalString = null;
-    		if(stringArray.length==2) {
-    			animalString = stringArray[1];
+    		
+    		String[] keyValuePair = UtilFunctions.getKeyValueFromHadoopOutput(value);
+    		if(keyValuePair != null) {
+    			animalString = keyValuePair[1];
     		}
+    		
     		ObjectMapper mapper = new ObjectMapper();
 			if (animalString != null && !animalString.isEmpty()) {
 				try {
@@ -70,7 +78,31 @@ public class HadoopRunner2 {
 						valueInt.set(animal.getColors().getPrimary()+":"+animal.getDaysToAdopt());
 		        		context.write(keyId, valueInt);
 					}
-					
+					if(animal.getAttributes() != null && animal.getAttributes().getSpayedNeutered() != null) {
+						keyId.set("Spayed");
+						valueInt.set(animal.getAttributes().getSpayedNeutered()+":"+animal.getDaysToAdopt());
+		        		context.write(keyId, valueInt);
+					}
+					if(animal.getAttributes() != null && animal.getAttributes().getHouseTrained() != null) {
+						keyId.set("HouseTrained");
+						valueInt.set(animal.getAttributes().getHouseTrained()+":"+animal.getDaysToAdopt());
+		        		context.write(keyId, valueInt);
+					}
+					if(animal.getAttributes() != null && animal.getAttributes().getSpecialNeeds() != null) {
+						keyId.set("SpecialNeeds");
+						valueInt.set(animal.getAttributes().getSpecialNeeds()+":"+animal.getDaysToAdopt());
+		        		context.write(keyId, valueInt);
+					}
+					if(animal.getAttributes() != null && animal.getAttributes().getShotsCurrent() != null) {
+						keyId.set("Shots");
+						valueInt.set(animal.getAttributes().getShotsCurrent()+":"+animal.getDaysToAdopt());
+		        		context.write(keyId, valueInt);
+					}
+					if(animal.getGender() != null ) {
+						keyId.set("Gemder");
+						valueInt.set(animal.getGender()+":"+animal.getDaysToAdopt());
+		        		context.write(keyId, valueInt);
+					}
 				}
 				catch (Exception e) {
 					e.printStackTrace();
@@ -92,6 +124,7 @@ public class HadoopRunner2 {
 			Map<String, Integer> mapOfCount = new HashMap<String,Integer>();
 			Map<String, Integer> mapOfSum = new HashMap<String,Integer>();
 			Map<String, List<Integer>> mapOfList = new HashMap<String,List<Integer>>();
+    		ObjectMapper mapper = new ObjectMapper();
 			String keyString = key.toString();
 			for (Text val : values) {
 				String valString = val.toString();
@@ -129,11 +162,13 @@ public class HadoopRunner2 {
 				
 			}
 			if(keyString !=null && !keyString.isEmpty()) {
-				String outputString = "";
+				FeatureOutput featureOutput = new FeatureOutput();
+				featureOutput.setFeatureName(keyString);
+				List<FeatureOption> featureOptions = new ArrayList<>();
 				int totalCount=0;
 				double weightedStandardDeviation = 0.0;
 				for(String option:setOfString) {
-					
+					FeatureOption featureOption = new FeatureOption();
 					int sum = mapOfSum.get(option);
 					int count = mapOfCount.get(option);
 					totalCount =totalCount+count;
@@ -149,11 +184,24 @@ public class HadoopRunner2 {
 					sq = standardDeviation / count;
 			        res = Math.sqrt(sq);
 			        double weightedRes = res*count;
+			        
+			        featureOption.setName(option);
+			        featureOption.setTotalCount(count);
+			        featureOption.setStandardDev(res);
+			        featureOption.setAverage(mean);
+			        
+			        featureOptions.add(featureOption);
+			       
 			        weightedStandardDeviation = weightedStandardDeviation+ weightedRes;
-					outputString = outputString +option+":"+res+",";
 				}
 				weightedStandardDeviation = weightedStandardDeviation/totalCount;
-				outputString = outputString + "Weight SD:"+weightedStandardDeviation;
+				
+				featureOutput.setStandardDev(weightedStandardDeviation);
+				featureOutput.setTotalCount(totalCount);
+				featureOutput.setListOfFeautreOptions(featureOptions);
+				
+				
+				String outputString = mapper.writeValueAsString(featureOutput);;
 				
 				result.set(outputString);
 				context.write(key, result);
@@ -162,7 +210,8 @@ public class HadoopRunner2 {
   }
 
   public static void main(String[] args) throws Exception {
-    Configuration conf = new Configuration();
+    Configuration conf = new Configuration();    
+   
     conf.setInt("mapreduce.task.io.sort.mb", 2000);
     Job job = Job.getInstance(conf, "Get options for each atrribute");
 	FileInputFormat.addInputPath(job, new Path("output"));
@@ -172,6 +221,43 @@ public class HadoopRunner2 {
     job.setReducerClass(AttributeReducer.class);
     job.setOutputKeyClass(Text.class);
     job.setOutputValueClass(Text.class);
-    System.exit(job.waitForCompletion(true) ? 0 : 1);
+    boolean jobComplete =job.waitForCompletion(true);
+    
+    List<String> outputLines = UtilFunctions.getLinesFromFile("standardDeviation/part-r-00000", conf);
+    double lowestDevation = Double.MAX_VALUE;
+    FeatureOutput bestOutput = null;
+    for(String line:outputLines) {
+    	String[] keyValue = UtilFunctions.getKeyValueFromHadoopOutput(line);
+
+    	if(keyValue != null) {
+    		String value = keyValue[1];
+    		ObjectMapper mapper = new ObjectMapper();
+    		FeatureOutput output = mapper.readValue(value, FeatureOutput.class);
+    		if(output.getStandardDev()<lowestDevation) {
+    			lowestDevation =output.getStandardDev();
+    			bestOutput = output;
+    		}
+    		
+    	}
+    	
+    }
+    
+    DecisionNode firstNode = new DecisionNode();
+    firstNode.setNodeId(UUID.randomUUID());
+    firstNode.setAcceptedValues(new ArrayList<>());
+    List<String> listOfValues = new ArrayList<>();
+    List<LeafNode> listofNodes = new ArrayList<>();
+    for(FeatureOption options:bestOutput.getListOfFeautreOptions()) {
+    	listOfValues.add(options.getName());
+    	LeafNode leaf = new LeafNode();
+    	leaf.setNodeId(UUID.randomUUID());
+    	leaf.setProdictedValue(options.getAverage());
+    	listofNodes.add(leaf);
+    	
+    }
+    
+    System.exit(jobComplete ? 0 : 1);
+    
+    
   }
 }

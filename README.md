@@ -26,3 +26,5 @@ house_trained
 special_needs
 
 shots_current
+
+gender
