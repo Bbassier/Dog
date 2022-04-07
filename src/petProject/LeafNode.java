@@ -5,7 +5,8 @@ import java.util.UUID;
 public class LeafNode {
 
 	private UUID nodeId;
-	private Double prodictedValue;
+	private Double predictedValue;
+	private String attributeValue;
 	/**
 	 * @return the nodeId
 	 */
@@ -19,16 +20,22 @@ public class LeafNode {
 		this.nodeId = nodeId;
 	}
 	/**
-	 * @return the prodictedValue
+	 * @return the predictedValue
 	 */
-	public Double getProdictedValue() {
-		return prodictedValue;
+	public Double getPredictedValue() {
+		return predictedValue;
 	}
 	/**
-	 * @param prodictedValue the prodictedValue to set
+	 * @param predictedValue the predictedValue to set
 	 */
-	public void setProdictedValue(Double prodictedValue) {
-		this.prodictedValue = prodictedValue;
+	public void setPredictedValue(Double predictedValue) {
+		this.predictedValue = predictedValue;
+	}
+	public String getAttributeValue() {
+		return attributeValue;
+	}
+	public void setAttributeValue(String attributeValue) {
+		this.attributeValue = attributeValue;
 	} 
 	
 }

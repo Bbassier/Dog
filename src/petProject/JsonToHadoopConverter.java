@@ -23,7 +23,7 @@ public class JsonToHadoopConverter {
 	public void convert(BufferedWriter writer, FileSystem fs) {
 		System.out.println("Converting Json To Output");
 		ObjectMapper mapper = new ObjectMapper();
-		try (LimitedFileWriter outFile = new LimitedFileWriter("output", 3, 10000000)){
+		try {
 			List<AnimalCollectionWithDate> jsonFiles = getJsonFiles(fs);
 			for (AnimalCollectionWithDate json : jsonFiles) {
 				// Convert JSON file to Java objects using Jackson Mapper

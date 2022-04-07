@@ -6,7 +6,21 @@ import java.util.UUID;
 public class DecisionNode {
 
 	private UUID nodeId;
+	private String attributeName;
 	private List<String> acceptedValues;
+	private List<LeafNode> children;
+	/**
+	 * @return the children
+	 */
+	public List<LeafNode> getChildren() {
+		return children;
+	}
+	/**
+	 * @param children the children to set
+	 */
+	public void setChildren(List<LeafNode> children) {
+		this.children = children;
+	}
 	/**
 	 * @return the nodeId
 	 */
@@ -30,6 +44,12 @@ public class DecisionNode {
 	 */
 	public void setAcceptedValues(List<String> acceptedValues) {
 		this.acceptedValues = acceptedValues;
+	}
+	public String getAttributeName() {
+		return attributeName;
+	}
+	public void setAttributeName(String attributeName) {
+		this.attributeName = attributeName;
 	}
 	
 

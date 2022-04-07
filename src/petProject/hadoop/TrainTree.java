@@ -1,5 +1,6 @@
 package petProject.hadoop;
 
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -214,6 +215,8 @@ public class TrainTree {
   }
 
   public static void main(String[] args) throws Exception {
+	  
+	//Convert Single Json into one file of aniamls
     Configuration conf = new Configuration(); 
     logger.info("Converting Json");
     JsonToHadoopConverter jsonToHadoopConverter =  new JsonToHadoopConverter();
@@ -221,6 +224,7 @@ public class TrainTree {
 	jsonToHadoopConverter.convert(UtilFunctions.getBufferedWriterForFile("jsonTransformed/output.txt", conf), fs);
 	logger.info("Converted Json, Moving to Hadoop Job 1");
     conf.setInt("mapreduce.task.io.sort.mb", 2000);
+    //Makes each animal JSON on a single line in the file jsonTransformed/output.txt
     
     //Determine how long it took for each dog to get adopted
     Job job1 = Job.getInstance(conf, "Animal Adoptaion Day");
@@ -232,7 +236,7 @@ public class TrainTree {
     job1.setOutputKeyClass(Text.class);
     job1.setOutputValueClass(Text.class);
     job1.waitForCompletion(true);
-    
+    //Only one Instance of JSON per animal is outputed, with the number of days it took to adopt calculated
     
     //Get The features, and there standard devations from pets
     Job job2 = Job.getInstance(conf, "Get options for each atrribute");
@@ -268,18 +272,28 @@ public class TrainTree {
     //Create Decision Tree
     DecisionNode firstNode = new DecisionNode();
     firstNode.setNodeId(UUID.randomUUID());
-    firstNode.setAcceptedValues(new ArrayList<>());
+    firstNode.setAttributeName(bestOutput.getFeatureName());
     List<String> listOfValues = new ArrayList<>();
     List<LeafNode> listofNodes = new ArrayList<>();
     for(FeatureOption options:bestOutput.getListOfFeautreOptions()) {
     	listOfValues.add(options.getName());
     	LeafNode leaf = new LeafNode();
     	leaf.setNodeId(UUID.randomUUID());
-    	leaf.setProdictedValue(options.getAverage());
+    	leaf.setPredictedValue(options.getAverage());
+    	leaf.setAttributeValue(options.getName());
     	listofNodes.add(leaf);
     	
     }
+    firstNode.setAcceptedValues(listOfValues);
+    firstNode.setChildren(listofNodes);
     
+    //Write Tree To File
+	ObjectMapper mapper = new ObjectMapper();
+    String jsonInString = mapper.writeValueAsString(firstNode);
+	BufferedWriter writer = UtilFunctions.getBufferedWriterForFile("desisionTree/firstPass.json", conf);
+	writer.write(jsonInString);
+	writer.close();
+	
     System.exit(jobComplete ? 0 : 1);
     
     
