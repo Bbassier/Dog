@@ -1,14 +1,17 @@
 package petProject;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.List;
 
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.FSDataInputStream;
+import org.apache.hadoop.fs.FSDataOutputStream;
 import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.Text;
@@ -42,6 +45,15 @@ public class UtilFunctions {
 		FSDataInputStream fsDataInputStream = fs.open(path);
 		BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(fsDataInputStream));
 		return bufferedReader;
+	}
+	
+	
+	public static final BufferedWriter getBufferedWriterForFile(String fileName, Configuration configuration) throws URISyntaxException, IOException {
+		FileSystem fs = FileSystem.get(configuration);
+		Path path = new Path(fileName);
+		FSDataOutputStream fsDataOutputStream = fs.create(path);
+		BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(fsDataOutputStream));
+		return bufferedWriter;
 	}
 	
 	public static final List<String> getLinesFromFile(String fileName, Configuration configuration){
